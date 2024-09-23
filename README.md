@@ -3,7 +3,7 @@
 El siguiente repositorio contiene scripts para descargar, re codificar y resumir la encuesta nacional de empleo (ENE).
 
 ## `ene-downloader.py`
-Éste script escrito en python (y con la ayuda de ChatGPT) descarga la encuesta nacional de empleo (en formato CSV) para los cuatro trimestres disjuntos de cada año en un cierto rango entregado por el usuario. Los archivos csv resultantes deben ser procesados con el notebook `recodificar-y-resumir-ene.Rmd`.
+Este script escrito en python (y con la ayuda de ChatGPT) descarga la encuesta nacional de empleo (en formato CSV) para los cuatro trimestres disjuntos de cada año en un cierto rango entregado por el usuario. Los archivos csv resultantes deben ser procesados con el notebook `recodificar-y-resumir-ene.Rmd`.
 
 
 ## `recodificar-y-resumir-ene.Rmd`
