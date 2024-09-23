@@ -1,0 +1,147 @@
+---
+title: "Encuesta nacional de empleo"
+author: "Rodolfo Carvaja, EN UAI"
+output: html_notebook
+---
+
+
+El siguiente notebook usa una serie de archivos CSV descargados desde <https://www.ine.gob.cl/estadisticas/sociales/mercado-laboral/ocupacion-y-desocupacion> (usando el script `ene-downloader.py`), recodifica algunas variables y luego elabora una base de datos con el número de personas, en la población en edad de trabajar, para cada año, trimestre, región, sexo, nivel educacional, rango etario, estado de actividad económica.
+
+**Notas:**
+
+* El script `ene-downloader.py` descarga los 4 trimestres disjuntos de cada año (EFM, AMJ, JAS, OND).
+* En el caso de nivel educacional, rango etario y estado de actividad económica, algunas de las categorías fueron agrupadas para hacer más simple el análisis.
+* Los cálculos con factor de expansión son redondeados para evitar confundir a los alumnos con números fraccionarios de personas. Es posible que esto genere incongruencias con cálculos realizados directamente sobre la base de datos original.
+
+
+
+```{r}
+library(tidyverse)
+library(janitor)
+```
+
+el siguiente chunk lee todos los nombres de archivo .csv en la carpeta actual.
+
+```{r}
+paths <- list.files(".", 
+           pattern = "[.]csv$",
+           full.names = TRUE)
+
+paths
+```
+
+El siguente chunk lee todos los archivos csv y los carga en una gran tibble.
+
+```{r}
+paths %>% 
+  map(read_csv2) %>% 
+  list_rbind() -> ene
+```
+
+## Recodificación de variables
+
+```{r}
+
+dict_sexo <- c("Hombre" = "1",
+               "Mujer" = "2")
+
+dict_trimestre <- c("1" = "2",
+                    "2" = "5",
+                    "3" = "8",
+                    "4" = "11")
+
+recodificacion_region <- c(
+  "Tarapacá" = "1",
+  "Antofagasta" = "2",
+  "Atacama" = "3",
+  "Coquimbo" = "4",
+  "Valparaíso" = "5",
+  "O'Higgins" = "6",
+  "Maule" = "7",
+  "Biobío" = "8",
+  "La Araucanía" = "9",
+  "Los Lagos" = "10",
+  "Aysén" = "11",
+  "Magallanes" = "12",
+  "Metropolitana" = "13",
+  "Los Ríos" = "14",
+  "Arica y Parinacota" = "15",
+  "Ñuble" = "16"
+)
+
+recodificacion_tramo_edad <- c(
+  "15 a 24" = "1",
+  "15 a 24" = "2",
+  "25 a 34" = "3",
+  "25 a 34" = "4",
+  "35 a 44" = "5",
+  "35 a 44" = "6",
+  "45 a 54" = "7",
+  "45 a 54" = "8",
+  "55 a 64" = "9",
+  "55 a 64" = "10",
+  "65 o más" = "11",
+  "65 o más" = "12"
+)
+
+recodificacion_nivel_educacional <- c(
+  "Nunca estudió" = "1",
+  "Educación preescolar" = "2",
+  "Educación primaria" = "3",
+  "Educación primaria" = "4",
+  "Educación secundaria" = "5",
+  "Educación técnica" = "6",
+  "Educación universitaria" = "7",
+  "Post títulos y maestría" = "8",
+  "Doctorado" = "9",
+  "Nivel ignorado" = "999"
+)
+
+
+ene_pet <- ene %>% 
+  filter(cae_especifico > 0) %>% 
+  mutate(estado = if_else(between(cae_especifico, 8, 9),
+                          "Desocupado",
+                          if_else(cae_especifico > 9,
+                                  "Inactivo",
+                                  "Ocupado"))) %>% 
+  mutate(sexo = fct_recode(as_factor(sexo), !!!dict_sexo)) %>% 
+  mutate(trimestre = fct_recode(as_factor(mes_central), !!!dict_trimestre)) %>% 
+    mutate(region = fct_recode(as_factor(region), !!!recodificacion_region)) %>% 
+    mutate(rango_edad = fct_recode(as_factor(tramo_edad), !!!recodificacion_tramo_edad)) %>% 
+    mutate(nivel_educacion = fct_recode(as_factor(cine), !!!recodificacion_nivel_educacional)) %>% 
+    mutate(formalidad = fct_recode(as_factor(ocup_form), "Formal" = "1", "Informal" = "2"))
+```
+
+
+
+```{r}
+ene_pet %>% 
+  glimpse()
+```
+
+
+## Base de datos con resumen de conteo
+
+```{r}
+ene_pet_18_23 <- ene_pet %>% 
+    group_by(ano_encuesta,
+             trimestre,
+             sexo,
+             region,
+             rango_edad,
+             formalidad,
+             nivel_educacion,
+             estado) %>% 
+    summarise(total = round_half_up(sum(fact_cal)))
+```
+
+
+
+## Exportar base de datos a archivo csv
+
+```{r}
+ene_pet_18_23 %>%
+    write_csv("ene_pet_18_23.csv")
+```
+
